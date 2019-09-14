@@ -31,7 +31,8 @@ test_data = tf.keras.preprocessing.sequence.pad_sequences(test_data,
 class transformer:
 
     def __init__(self):
-        self.seed = 13
+        self.embedding_size = 512
+        self.attention_size = 64
 
         self.X = tf.placeholder(tf.float32, shape=[None, 256], name="input")
         self.y = tf.placeholder(tf.int32, shape=(None, 1), name="labels")
@@ -39,34 +40,35 @@ class transformer:
     def transformer(self, X):
         # X = (n, t, 512)
         # (n, t, 64)
-        Q = tf.matmul(X, tf.random.uniform([512, 64]))
-        K = tf.matmul(X, tf.random.uniform([512, 64]))
-        V = tf.matmul(X, tf.random.uniform([512, 64]))
+        Q = tf.matmul(X, tf.random.uniform([self.embedding_size, self.attention_size]))
+        K = tf.matmul(X, tf.random.uniform([self.embedding_size, self.attention_size]))
+        V = tf.matmul(X, tf.random.uniform([self.embedding_size, self.attention_size]))
 
         # (n, t, 64) * (n, t, 64).T = (n, t, n, t)
         score = tf.matmul(Q, tf.transpose(K))
 
 
-        softmax = tf.nn.softmax(tf.divide(score, np.sqrt(64)), axis=-1)
+        softmax = tf.nn.softmax(tf.divide(score, np.sqrt(self.attention_size)), axis=-1)
 
         value_vec = tf.matmul(softmax, V)
 
-        return value_vec, score, Q, K, V
+        return value_vec
 
     def createModel(self):
 
-        embedding = tf.layers.dense(self.X, 512)
-        t1, score, Q, K, V = self.transformer(embedding)
+        embedding = tf.layers.dense(self.X, self.embedding_size)
+        t1 = self.transformer(embedding)
 
         fc = tf.layers.dense(t1, 1)
 
-        return fc, score, Q, K, V
+        return fc
 
 model = transformer()
-fc, score, Q, K, V = model.createModel()
+fc = model.createModel()
 
 with tf.Session() as sess:
   # Run the initializer on `w`.
   sess.run(tf.global_variables_initializer())
 
   output = sess.run([fc], {model.X: train_data, model.y: train_labels[:, np.newaxis]})
+  print(output)
